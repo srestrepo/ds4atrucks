@@ -1,0 +1,15 @@
+{
+    "prod": {
+        "awscloudformation": {
+            "AuthRoleName": "amplify-ds4atrucks-prod-163928-authRole",
+            "UnauthRoleArn": "arn:aws:iam::594139070464:role/amplify-ds4atrucks-prod-163928-unauthRole",
+            "AuthRoleArn": "arn:aws:iam::594139070464:role/amplify-ds4atrucks-prod-163928-authRole",
+            "Region": "us-east-1",
+            "DeploymentBucketName": "amplify-ds4atrucks-prod-163928-deployment",
+            "UnauthRoleName": "amplify-ds4atrucks-prod-163928-unauthRole",
+            "StackName": "amplify-ds4atrucks-prod-163928",
+            "StackId": "arn:aws:cloudformation:us-east-1:594139070464:stack/amplify-ds4atrucks-prod-163928/b9ed9630-97bd-11ea-b136-0e03eb938c18",
+            "AmplifyAppId": "d11hamk6061r18"
+        }
+    }
+}

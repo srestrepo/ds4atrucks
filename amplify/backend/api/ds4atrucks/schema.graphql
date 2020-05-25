@@ -1,0 +1,17 @@
+  type Truck @model {
+  id: ID!
+  plate: String!
+  driver: String!
+  lat: String
+  lng: String
+  available: Boolean
+}
+
+type Request @model {
+  id: ID!
+  user: String!
+  address: String!
+  lat: String
+  lng: String
+  truck: Truck @connection(fields: ["id"])
+}
