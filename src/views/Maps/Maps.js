@@ -4,7 +4,7 @@ import {
   withGoogleMap,
   GoogleMap,
   Marker,
-  InfoWindow
+  DirectionsRenderer
 } from "react-google-maps";
 
 import Dialog from '@material-ui/core/Dialog';
@@ -15,7 +15,7 @@ import DialogActions from '@material-ui/core/DialogTitle';
 import Button from '@material-ui/core/Button';
 
 // @material-ui/core
-import { makeStyles } from "@material-ui/core/styles";
+import { makeStyles, responsiveFontSizes } from "@material-ui/core/styles";
 import Icon from "@material-ui/core/Icon";
 // @material-ui/icons
 import Warning from "@material-ui/icons/Warning";
@@ -45,7 +45,7 @@ const useStyles = makeStyles(styles);
 
 const initialState = { plate: '', driver: '' }
 const initialSelectedTruck = ({id: '', plate: '', driver: ''})
-const initialSelectedRequest = ({id: '', customer: '', address: ''})
+const initialSelectedRequest = ({id: '', customer: '', address: '', latLng: {}})
 
 const App = () => {
   const [formState, setFormState] = useState(initialState)
@@ -57,6 +57,7 @@ const App = () => {
   const [newRequestDialogOpen,setNewRequestOpen] = useState(false)
   const [truckDetailDialogOpen,setTruckDetailDialogOpen] = useState(false)
   const [requestDetailDialogOpen,setRequestDetailDialogOpen] = useState(false)
+  const [truckAssignmentDialogOpen,setTruckAssignmentDialogOpen] = useState(false)
   const [latLng,setLatLng] = useState()
   const [newPlate,setNewPlate] = useState()
   const [newDriver,setNewDriver] = useState()
@@ -64,6 +65,7 @@ const App = () => {
   const [newAddress,setNewAddress] = useState()
   const [selectedTruck, setSelectedTruck] = useState(initialSelectedTruck)
   const [selectedRequest, setSelectedRequest] = useState(initialSelectedRequest)
+  const [nearestTruck, setNearestTruck] = useState(initialSelectedTruck)
 
   useEffect(() => {
     fetchTrucks()
@@ -123,7 +125,7 @@ const App = () => {
       await fetchTrucks()
       setTruckDetailDialogOpen(false)
     } catch (err) {
-      console.log('error creating truck:', err)
+      console.log('error removing truck:', err)
     }
   }
 
@@ -183,7 +185,60 @@ const App = () => {
       await fetchRequests()
       setRequestDetailDialogOpen(false)
     } catch (err) {
-      console.log('error creating truck:', err)
+      console.log('error removing request', err)
+    }
+  }
+
+  async function assignNearestTruck(e){
+    // find nearest truck
+    const directionsService = new window.google.maps.DirectionsService()
+
+    let distances = []
+
+    for(var truck of markers)
+    {
+      distances.push(
+        await new Promise((resolve, reject) => {
+          directionsService.route(
+            {
+              origin: {lat: selectedRequest.latLng.lat(), lng: selectedRequest.latLng.lng()} ,
+              destination: {lat: truck.location.lat(), lng: truck.location.lng()},
+              travelMode: window.google.maps.TravelMode.DRIVING
+            },  
+            (result, status) => {
+              if (status === window.google.maps.DirectionsStatus.OK) {
+                resolve({truck: truck, duration: result.routes[0].legs[0].duration})
+              } else {
+                console.error(`error fetching directions ${result}`);
+                reject('error')
+              }
+            }
+          );
+       })
+      )
+    }
+
+    try {
+      console.log('Assigning nearest truck')
+      let sorted = distances.sort((a,b) => {return (a.duration.value < b.duration.value) ? -1 : 1})
+      let selectedTruck = sorted[0]
+      console.log(selectedTruck)
+
+      setNearestTruck({id: selectedTruck.truck.id, plate: selectedTruck.truck.plate, driver: selectedTruck.truck.driver})
+
+      let oldMarkers = markers
+      let newMarkers = []
+      for(var marker of oldMarkers){
+        if(marker.id != selectedTruck.truck.id){
+          newMarkers.push(marker)
+        }
+      }
+      setMarkers(newMarkers)
+
+      setRequestDetailDialogOpen(false)
+      setTruckAssignmentDialogOpen(true)
+    } catch (err) {
+      console.log('error assigning truck:', err)
     }
   }
 
@@ -231,7 +286,7 @@ const App = () => {
     const {address} = props;
 
     const onMarkerClick = (e, id, customer, address) => {
-      setSelectedRequest({id: id, customer: customer, address: address})
+      setSelectedRequest({id: id, customer: customer, address: address, latLng: e.latLng})
       setRequestDetailDialogOpen(true)
     };
 
@@ -309,6 +364,10 @@ const App = () => {
 
   const handleRequestDetailClose = (value) => {
     setRequestDetailDialogOpen(false);
+  };
+
+  const handleAssignmentDialogClose = (value) => {
+    setTruckAssignmentDialogOpen(false);
   };
 
   const handlePlateChange = (evt) =>{
@@ -515,10 +574,25 @@ const App = () => {
           <p>Address: {selectedRequest.address}</p>
         </DialogContent>
         <DialogActions>
+          <Button color="primary" onClick={assignNearestTruck}>
+            Assign Nearest Truck
+          </Button>
           <Button color="primary" onClick={removeRequest}>
             Remove Request
           </Button>
           <Button onClick={handleRequestDetailClose} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog onClose={handleAssignmentDialogClose} aria-labelledby="simple-dialog-title" open={truckAssignmentDialogOpen}>
+        <DialogTitle id="simple-dialog-title">Assigned Truck</DialogTitle>
+        <DialogContent>
+          <p>Plate: {nearestTruck.plate}</p>
+          <p>Driver: {nearestTruck.driver}</p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAssignmentDialogClose} color="primary">
             Close
           </Button>
         </DialogActions>
